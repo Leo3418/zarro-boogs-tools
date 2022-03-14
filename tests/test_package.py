@@ -117,6 +117,36 @@ class TestPackage(unittest.TestCase):
         with self.assertRaises(MalformedAtom):
             get_atom_obj_from_str('!!!foo-bar/baz')
 
+    def test_check_atom_obj_for_keywording(self):
+        """
+        Test if the 'check_atom_obj_for_keywording' function returns 'None' for
+        atoms that are valid in the context of keywording and a string for
+        invalid atoms.
+        """
+        self.assertIsNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('dev-python/pytest')))
+        self.assertIsNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('<dev-python/pytest-5')))
+        self.assertIsNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('>=virtual/jdk-1.8')))
+        self.assertIsNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('sys-devel/llvm:10')))
+        self.assertIsNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('app-misc/frobnicate-1.2.3')))
+        self.assertIsNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('=dev-libs/libfrobnicate-1.9')))
+
+        self.assertIsNotNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('!dev-java/kotlin-stdlib:1.6')))
+        self.assertIsNotNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('!!dev-java/kotlin-stdlib:1.6')))
+        self.assertIsNotNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('>=virtual/jdk-1.8:*')))
+        self.assertIsNotNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('dev-libs/libffi:=')))
+        self.assertIsNotNone(check_atom_obj_for_keywording(
+            get_atom_obj_from_str('media-sound/sox[ogg]')))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -21,6 +21,7 @@
 
 import pkgcore.ebuild.atom as atom
 from pkgcore.ebuild.errors import MalformedAtom
+from typing import Optional
 
 
 def get_atom_obj_from_str(atom_str: str) -> atom:
@@ -48,3 +49,26 @@ def get_atom_obj_from_str(atom_str: str) -> atom:
         except MalformedAtom:
             atom_str = '=' + atom_str
             return str_to_atom()
+
+
+def check_atom_obj_for_keywording(atom_obj: atom) -> Optional[str]:
+    """
+    Check if a package atom represented by an object is a valid atom in the
+    context of keywording according to NATTkA
+    <https://dev.gentoo.org/~mgorny/doc/nattka/bug.html>.  If it is, then this
+    function returns 'None'; otherwise, a string describing the issue is
+    returned.
+
+    :param atom_obj: the object representing the atom
+    :return: a string explaining the reason if the atom is invalid, or 'None'
+        otherwise
+    """
+    if atom_obj is None:
+        return "'None' is specified as the atom"
+    if atom_obj.blocks:
+        return "Atom contains a block operator"
+    if atom_obj.slot_operator:
+        return "Atom contains a slot operator"
+    if atom_obj.use:
+        return "Atom contains USE dependency"
+    return None
