@@ -22,6 +22,10 @@
 import unittest
 from zarro_boogs_tools.package import *
 
+from pathlib import Path
+
+import nattka.package
+
 
 class TestPackage(unittest.TestCase):
     def test_get_atom_obj_from_str_pms(self):
@@ -146,6 +150,35 @@ class TestPackage(unittest.TestCase):
             get_atom_obj_from_str('dev-libs/libffi:=')))
         self.assertIsNotNone(check_atom_obj_for_keywording(
             get_atom_obj_from_str('media-sound/sox[ogg]')))
+
+    def test_get_best_version(self):
+        """
+        Test if the 'get_best_version' function returns a matching version for
+        atoms that have a match in the specified ebuild repository and 'None'
+        otherwise.
+        """
+        _, empty = nattka.package.find_repository(
+            Path('tests/ebuild-repos/empty'))
+        _, single_pkg_multi_vers = nattka.package.find_repository(
+            Path('tests/ebuild-repos/single-pkg-multi-vers'))
+
+        self.assertIsNone(get_best_version(
+            get_atom_obj_from_str('foo-bar/baz'), empty))
+        self.assertIsNone(get_best_version(
+            get_atom_obj_from_str('foo-bar/qux'), empty))
+
+        self.assertIsNone(get_best_version(
+            get_atom_obj_from_str('foo-bar/qux'), single_pkg_multi_vers))
+        self.assertIsNone(get_best_version(
+            get_atom_obj_from_str('>=foo-bar/baz-1.1'), single_pkg_multi_vers))
+        self.assertIsNone(get_best_version(
+            get_atom_obj_from_str('foo-bar/baz:2'), single_pkg_multi_vers))
+        self.assertEqual('1.0.3', get_best_version(
+            get_atom_obj_from_str('foo-bar/baz'), single_pkg_multi_vers
+        ).version)
+        self.assertEqual('1.0.2', get_best_version(
+            get_atom_obj_from_str('=foo-bar/baz-1.0.2'), single_pkg_multi_vers
+        ).version)
 
 
 if __name__ == '__main__':
