@@ -20,7 +20,7 @@
 #  <https://www.gnu.org/licenses/>.
 
 import unittest
-from zbt.package import *
+from zarro_boogs_tools.package import *
 
 
 class TestPackage(unittest.TestCase):
