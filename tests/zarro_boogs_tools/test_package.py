@@ -33,7 +33,7 @@ class TestPackage(unittest.TestCase):
         Test if the 'get_atom_obj_from_str' function supports all kinds of
         package atoms defined by section 8.3, PMS for EAPI 8.
         """
-        get_atom_obj_from_str('foo-bar/baz')
+        self.assertIsNotNone(get_atom_obj_from_str('foo-bar/baz'))
 
         # 8.3.1 Operators
         self.assertIsNotNone(get_atom_obj_from_str('<foo-bar/baz-1.0.2'))
