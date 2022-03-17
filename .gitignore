@@ -323,6 +323,17 @@ flycheck_*.el
 # END GNU/Linux #
 #################
 
+################
+# BEGIN Gentoo #
+################
+
+# Metadata cache for ebuild repositories used in tests
+**/metadata/md5-cache
+
+##############
+# END Gentoo #
+##############
+
 ###############
 # BEGIN macOS #
 ###############
