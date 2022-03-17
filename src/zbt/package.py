@@ -19,9 +19,13 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-import pkgcore.ebuild.atom as atom
-from pkgcore.ebuild.errors import MalformedAtom
 from typing import Optional
+
+import nattka.package
+import pkgcore.ebuild.atom as atom
+from pkgcore.ebuild.ebuild_src import package
+from pkgcore.ebuild.errors import MalformedAtom
+from pkgcore.ebuild.repository import UnconfiguredTree
 
 
 def get_atom_obj_from_str(atom_str: str) -> atom:
@@ -72,3 +76,23 @@ def check_atom_obj_for_keywording(atom_obj: atom) -> Optional[str]:
     if atom_obj.use:
         return "Atom contains USE dependency"
     return None
+
+
+def get_best_version(atom_obj: atom, repo: UnconfiguredTree) \
+        -> Optional[package]:
+    """
+    Find the best version of the package that satisfies the specified atom in
+    a given ebuild repository.  If a version can be found, return the object
+    that represents the best version; otherwise, 'None' is returned.
+
+    :param atom_obj: the object representing the atom
+    :param repo: the object representing the ebuild repository where candidate
+        packages are searched
+    :return: the object for the best-matching package if there is one, or
+        'None' otherwise
+    """
+    matches = repo.match(atom_obj)
+    if len(matches) == 0:
+        return None
+    else:
+        return nattka.package.select_best_version(matches)
