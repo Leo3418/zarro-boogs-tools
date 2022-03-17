@@ -180,6 +180,22 @@ class TestPackage(unittest.TestCase):
             get_atom_obj_from_str('=foo-bar/baz-1.0.2'), single_pkg_multi_vers
         ).version)
 
+    def test_get_best_version_pkg_filter(self):
+        """
+        Test if the 'get_best_version' function respects any specified package
+        filter.
+        """
+        _, single_pkg_multi_vers = nattka.package.find_repository(
+            Path('tests/ebuild-repos/single-pkg-multi-vers'))
+
+        self.assertEqual('1.0.2', get_best_version(
+            get_atom_obj_from_str('foo-bar/baz'), single_pkg_multi_vers,
+            lambda ps: filter(lambda p: p.version == '1.0.2', ps)
+        ).version)
+        self.assertIsNone(get_best_version(
+            get_atom_obj_from_str('>foo-bar/baz-1.0.2'), single_pkg_multi_vers,
+            lambda ps: filter(lambda p: p.version == '1.0.2', ps)))
+
 
 if __name__ == '__main__':
     unittest.main()

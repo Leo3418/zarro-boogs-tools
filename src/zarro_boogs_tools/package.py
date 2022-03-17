@@ -19,7 +19,7 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-from typing import Optional
+from typing import Callable, Iterable, Iterator, Optional
 
 import nattka.package
 import pkgcore.ebuild.atom as atom
@@ -78,8 +78,11 @@ def check_atom_obj_for_keywording(atom_obj: atom) -> Optional[str]:
     return None
 
 
-def get_best_version(atom_obj: atom, repo: UnconfiguredTree) \
-        -> Optional[package]:
+def get_best_version(
+        atom_obj: atom,
+        repo: UnconfiguredTree,
+        pkg_filter: Optional[Callable[[Iterator[package]], Iterable]] = None
+) -> Optional[package]:
     """
     Find the best version of the package that satisfies the specified atom in
     a given ebuild repository.  If a version can be found, return the object
@@ -88,10 +91,13 @@ def get_best_version(atom_obj: atom, repo: UnconfiguredTree) \
     :param atom_obj: the object representing the atom
     :param repo: the object representing the ebuild repository where candidate
         packages are searched
+    :param pkg_filter: a filter for limiting the set of packages that may be
+        selected as the best version; omit or specify 'None' to skip any
+        filtering
     :return: the object for the best-matching package if there is one, or
         'None' otherwise
     """
-    matches = repo.match(atom_obj)
+    matches = repo.match(atom_obj, pkg_filter=pkg_filter)
     if len(matches) == 0:
         return None
     else:
