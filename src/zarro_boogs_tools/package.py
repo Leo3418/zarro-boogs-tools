@@ -42,7 +42,7 @@ def get_atom_obj_from_str(atom_str: str) -> atom:
         this function
     """
 
-    def str_to_atom():
+    def str_to_atom() -> atom:
         return atom.atom(atom_str, eapi='5')
 
     if atom_str.startswith('='):
