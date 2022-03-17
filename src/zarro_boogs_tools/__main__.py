@@ -19,13 +19,14 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-import zbt
+import zarro_boogs_tools
 
 import sys
 
 
 def main() -> int:
-    print(f"{zbt.__project_name__} {zbt.__version__}")
+    print(f"{zarro_boogs_tools.__project_name__} "
+          f"{zarro_boogs_tools.__version__}")
     return 0
 
 
