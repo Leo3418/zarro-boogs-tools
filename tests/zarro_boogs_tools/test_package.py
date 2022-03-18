@@ -196,6 +196,56 @@ class TestPackage(unittest.TestCase):
             get_atom_obj_from_str('>foo-bar/baz-1.0.2'), single_pkg_multi_vers,
             lambda ps: filter(lambda p: p.version == '1.0.2', ps)))
 
+    def test_get_packages_to_process(self):
+        """
+        Run a basic test for the 'get_packages_to_process' function.
+        """
+        _, etr_simplified = nattka.package.find_repository(
+            Path('tests/ebuild-repos/etr-simplified'))
+        etr = get_best_version(
+            get_atom_obj_from_str('games-action/extreme-tuxracer'),
+            etr_simplified
+        )
+        etr_pkgs = get_packages_to_process(etr, '~riscv', etr_simplified)
+        self.assertEqual(2, len(etr_pkgs))
+        etr_pkgs_strs = [f'{pkg.cpvstr}' for pkg in etr_pkgs]
+        self.assertTrue('games-action/extreme-tuxracer-0.8.1_p1' in etr_pkgs_strs)
+        self.assertTrue('media-sound/modplugtools-0.5.3' in etr_pkgs_strs)
+
+    def test_get_packages_to_process_pkg_filter(self):
+        """
+        Test if the 'get_packages_to_process' function respects version
+        preference specified with the 'pkg_filter' parameter.
+        """
+        _, java = nattka.package.find_repository(
+            Path('tests/ebuild-repos/java'))
+        ant_core = get_best_version(
+            get_atom_obj_from_str('dev-java/ant-core'), java)
+        ant_core_pkgs = get_packages_to_process(
+            ant_core, '~riscv', java,
+            lambda pkgs: filter(lambda pkg: 'amd64' in pkg.keywords, pkgs))
+        self.assertEqual(3, len(ant_core_pkgs))
+        ant_core_pkgs_strs = [f'{pkg.cpvstr}' for pkg in ant_core_pkgs]
+        self.assertTrue('dev-java/ant-core-1.10.9-r3' in ant_core_pkgs_strs)
+        self.assertTrue('virtual/jdk-11-r2' in ant_core_pkgs_strs)
+        self.assertTrue('dev-java/openjdk-bin-11.0.14_p9-r1'
+                        in ant_core_pkgs_strs)
+
+    def test_get_packages_to_process_ignores_blocker(self):
+        """
+        Test if the 'get_packages_to_process' function does not return
+        dependencies specified as a block.
+        """
+        _, etr_simplified = nattka.package.find_repository(
+            Path('tests/ebuild-repos/etr-simplified'))
+        pkgconf = get_best_version(
+            get_atom_obj_from_str('dev-util/pkgconf'), etr_simplified)
+        pkgconf_pkgs = get_packages_to_process(
+            pkgconf, 'riscv', etr_simplified)
+        self.assertEqual(1, len(pkgconf_pkgs))
+        pkgconf_pkgs_strs = [f'{pkg.cpvstr}' for pkg in pkgconf_pkgs]
+        self.assertTrue('dev-util/pkgconf-1.8.0-r1' in pkgconf_pkgs_strs)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -19,10 +19,13 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
+from zarro_boogs_tools.pkgcore.restriction import preprocess_restriction
+
 from typing import Callable, Iterable, Iterator, Optional
 
 import nattka.package
 import pkgcore.ebuild.atom as atom
+import pkgcore.restrictions.boolean as boolean
 from pkgcore.ebuild.ebuild_src import package
 from pkgcore.ebuild.errors import MalformedAtom
 from pkgcore.ebuild.repository import UnconfiguredTree
@@ -102,3 +105,110 @@ def get_best_version(
         return None
     else:
         return nattka.package.select_best_version(matches)
+
+
+def get_packages_to_process(
+        main_package: package,
+        target_keyword: str,
+        repo: UnconfiguredTree,
+        pkg_filter: Optional[Callable[[Iterator[package]], Iterable]] = None
+) -> list[package]:
+    """
+    When keywording or stabilizing a package, find the dependencies that also
+    need to be keyworded or stabilized.  All packages in the returned result
+    will contain the full version specification (PVR).
+
+    The 'target_keyword' parameter is used to specify not only the architecture
+    on which the keywording or stabilization will happen but also whether the
+    processing is for keywording or stabilization.  For instance, specifying
+    '~amd64' as the argument for this parameter indicates that keywording is
+    being performed on the amd64 architecture, whereas specifying 'amd64'
+    indicates that stabilization is being done on amd64.
+
+    'pkg_filter' can be used to restrict versions of dependencies that may be
+    selected based on any attribute supported by the
+    pkgcore.ebuild.ebuild_src.package class.  If the argument for this
+    parameter is not omitted and is not 'None', then this function will apply
+    the specified filter on every dependency when it searches for the version
+    of that dependency to be included in the returned result.  If no version
+    passes through the filter, then this function will search for a version of
+    the dependency again without the filter.
+
+    'pkg_filter' is never applied to 'main_package'; it is in effect only in
+    dependency version selection.
+
+    'pkg_filter' examples:
+    - lambda pkgs: filter(lambda pkg: '~amd64' in pkg.keywords, pkgs)
+        For each dependency, use the best version among all versions that are
+        keyworded on amd64 whenever it is available.
+    - lambda pkgs: filter(lambda pkg: 'amd64' in pkg.keywords, pkgs)
+        For each dependency, use the best version among all versions that are
+        stable on amd64 whenever it is available.
+
+    Invocation examples:
+    - To keyword dev-java/ant-core and its dependencies on riscv and avoid
+      keywording dependencies that have not been stabilized on amd64 yet:
+        atom = get_atom_obj_from_str('dev-java/ant-core')
+        _, repo = nattka.package.find_repository(Path('/var/db/repos/gentoo'))
+        target_keyword = '~riscv'
+        best_version = get_best_version(atom, repo)
+        packages_to_process = get_deps_to_process(
+            best_version, target_keyword, repo,
+            lambda pkgs: filter(lambda pkg: 'amd64' in pkg.keywords, pkgs)
+        )
+        # Keyword packages listed in 'packages_to_process'
+
+    :param main_package: the main package to keyword or stabilize
+    :param target_keyword: the keyword that would be added to the main
+        package's 'KEYWORDS' variable after the process
+    :param repo: the object representing the ebuild repository where candidate
+        packages are searched
+    :param pkg_filter: a filter to set a preference on the versions of
+        dependencies chosen to be processed; omit or specify 'None' to skip any
+        filtering
+    :return: a list of the selected packages to process
+    """
+    # Run an ordinary breadth-first search in the package's dependency graph
+    result = list()
+    main_package_singleton = [main_package]
+    pkg_processing_queue = list(main_package_singleton)
+    visited_pkgs = set(main_package_singleton)
+
+    while len(pkg_processing_queue) > 0:
+        next_pkg = pkg_processing_queue.pop(0)
+        if target_keyword in next_pkg.keywords:
+            # The package already has the target keyword; no action needed
+            continue
+        result.append(next_pkg)
+
+        deps_restrictions = set()
+        for dep_class in [next_pkg.bdepend, next_pkg.depend, next_pkg.rdepend,
+                          next_pkg.pdepend, next_pkg.idepend]:
+            deps_restrictions = deps_restrictions.union(dep_class.restrictions)
+
+        processed_restrictions = set()
+        for restriction in deps_restrictions:
+            restriction = preprocess_restriction(restriction)
+            if isinstance(restriction, atom.atom) and restriction.blocks:
+                # Do not process dependencies specified as a block
+                continue
+            # Each dependency in an all-of group need to be processed
+            # individually; if an all-of group was given to the
+            # get_best_version() function directly, 'None' would be returned
+            if isinstance(restriction, boolean.AndRestriction) and \
+                    not isinstance(restriction, atom.atom):
+                processed_restrictions = \
+                    processed_restrictions.union(restriction)
+            else:
+                processed_restrictions.add(restriction)
+
+        for restriction in processed_restrictions:
+            dep_pkg = get_best_version(restriction, repo, pkg_filter)
+            if dep_pkg is None:
+                # No package matches the filter; try again without it
+                dep_pkg = get_best_version(restriction, repo)
+            if dep_pkg is not None and dep_pkg not in visited_pkgs:
+                pkg_processing_queue.append(dep_pkg)
+                visited_pkgs.add(dep_pkg)
+
+    return result
