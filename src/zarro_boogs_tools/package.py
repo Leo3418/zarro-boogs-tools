@@ -193,8 +193,8 @@ def get_packages_to_process(
             if isinstance(restriction, atom.atom) and restriction.blocks:
                 # Do not process dependencies specified as a block
                 continue
-            # Each dependency in an all-of group need to be processed
-            # individually; if an all-of group was given to the
+            # Each dependency in an all-of group needs to be processed
+            # individually; otherwise, if an all-of group was given to the
             # get_best_version() function directly, 'None' would be returned
             if isinstance(restriction, boolean.AndRestriction) and \
                     not isinstance(restriction, atom.atom):
