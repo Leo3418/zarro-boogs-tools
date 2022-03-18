@@ -208,7 +208,7 @@ class TestPackage(unittest.TestCase):
         )
         etr_pkgs = get_packages_to_process(etr, '~riscv', etr_simplified)
         self.assertEqual(2, len(etr_pkgs))
-        etr_pkgs_strs = [f'{pkg.cpvstr}' for pkg in etr_pkgs]
+        etr_pkgs_strs = [pkg.cpvstr for pkg in etr_pkgs]
         self.assertTrue('games-action/extreme-tuxracer-0.8.1_p1' in etr_pkgs_strs)
         self.assertTrue('media-sound/modplugtools-0.5.3' in etr_pkgs_strs)
 
@@ -225,7 +225,7 @@ class TestPackage(unittest.TestCase):
             ant_core, '~riscv', java,
             lambda pkgs: filter(lambda pkg: 'amd64' in pkg.keywords, pkgs))
         self.assertEqual(3, len(ant_core_pkgs))
-        ant_core_pkgs_strs = [f'{pkg.cpvstr}' for pkg in ant_core_pkgs]
+        ant_core_pkgs_strs = [pkg.cpvstr for pkg in ant_core_pkgs]
         self.assertTrue('dev-java/ant-core-1.10.9-r3' in ant_core_pkgs_strs)
         self.assertTrue('virtual/jdk-11-r2' in ant_core_pkgs_strs)
         self.assertTrue('dev-java/openjdk-bin-11.0.14_p9-r1'
@@ -243,7 +243,7 @@ class TestPackage(unittest.TestCase):
         pkgconf_pkgs = get_packages_to_process(
             pkgconf, 'riscv', etr_simplified)
         self.assertEqual(1, len(pkgconf_pkgs))
-        pkgconf_pkgs_strs = [f'{pkg.cpvstr}' for pkg in pkgconf_pkgs]
+        pkgconf_pkgs_strs = [pkg.cpvstr for pkg in pkgconf_pkgs]
         self.assertTrue('dev-util/pkgconf-1.8.0-r1' in pkgconf_pkgs_strs)
 
     def test_get_packages_to_process_treats_stable_as_keyworded(self):
