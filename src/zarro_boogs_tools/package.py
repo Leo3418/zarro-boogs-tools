@@ -176,7 +176,8 @@ def get_packages_to_process(
 
     while len(pkg_processing_queue) > 0:
         next_pkg = pkg_processing_queue.pop(0)
-        if target_keyword in next_pkg.keywords:
+        if target_keyword in next_pkg.keywords or \
+                target_keyword.lstrip('~') in next_pkg.keywords:
             # The package already has the target keyword; no action needed
             continue
         result.append(next_pkg)

@@ -246,6 +246,23 @@ class TestPackage(unittest.TestCase):
         pkgconf_pkgs_strs = [f'{pkg.cpvstr}' for pkg in pkgconf_pkgs]
         self.assertTrue('dev-util/pkgconf-1.8.0-r1' in pkgconf_pkgs_strs)
 
+    def test_get_packages_to_process_treats_stable_as_keyworded(self):
+        """
+        Test if the 'get_packages_to_process' function does not add a
+        dependency that has already been stabilized in a keywording process.
+        There is no need to keyword a stable package; stable packages should
+        obviously be considered keyworded.
+        """
+        _, java = nattka.package.find_repository(
+            Path('tests/ebuild-repos/java'))
+        c3p0 = get_best_version(get_atom_obj_from_str('dev-java/c3p0'), java)
+        c3p0_pkgs = get_packages_to_process(
+            c3p0, '~arm64', java,
+            lambda pkgs: filter(lambda pkg: 'arm64' in pkg.keywords, pkgs))
+        self.assertEqual(1, len(c3p0_pkgs))
+        c3p0_pkgs_strs = [pkg.cpvstr for pkg in c3p0_pkgs]
+        self.assertTrue('dev-java/c3p0-0.9.5.5-r1' in c3p0_pkgs_strs)
+
 
 if __name__ == '__main__':
     unittest.main()
