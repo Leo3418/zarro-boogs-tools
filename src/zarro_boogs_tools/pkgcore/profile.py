@@ -27,14 +27,14 @@ from pkgcore.ebuild.profiles import OnDiskProfile
 from pkgcore.restrictions.restriction import AlwaysBool
 
 
-def get_portage_profile(portage_config_root: str) -> Optional[OnDiskProfile]:
+def get_selected_portage_profile(portage_config_root: str) -> Optional[str]:
     """
-    Find the Portage profile set in the specified Portage configuration files
-    location.
+    Find the Portage profile selected in the specified Portage configuration
+    files location.
 
     :param portage_config_root: a string representation of the path to the
         Portage configuration files
-    :return: an object for the profile set in the specified Portage
+    :return: the name of the profile selected in the specified Portage
         configuration if a valid profile is properly set, or 'None' otherwise
     """
     # Code stolen from pkgcore.ebuild.portage_conf.PortageConfig
@@ -42,8 +42,8 @@ def get_portage_profile(portage_config_root: str) -> Optional[OnDiskProfile]:
     if not os.path.islink(make_profile):
         return None
     profile_full_path = os.path.realpath(make_profile)
-    base_path, profile = OnDiskProfile.split_abspath(profile_full_path)
-    return OnDiskProfile(base_path, profile)
+    _, profile = OnDiskProfile.split_abspath(profile_full_path)
+    return profile
 
 
 def package_use_masked_in_profile(
