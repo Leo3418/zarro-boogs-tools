@@ -19,26 +19,56 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
+from zarro_boogs_tools.pkgcore.profile import package_use_masked_in_profile
+
+from typing import Optional
+
 import pkgcore.ebuild.atom as atom
 import pkgcore.restrictions.boolean as boolean
 import pkgcore.restrictions.restriction as restriction
+from pkgcore.ebuild.ebuild_src import package
+from pkgcore.ebuild.profiles import OnDiskProfile
 from pkgcore.restrictions.packages import Conditional
 
 
-def preprocess_restriction(restrict: restriction.base) -> restriction.base:
+def preprocess_restriction(
+        restrict: restriction.base,
+        current_package: Optional[package] = None,
+        profile: Optional[OnDiskProfile] = None,
+        stable: Optional[bool] = None
+) -> restriction.base:
     """
     Run a pkgcore restriction object through the preprocessing pipeline, so it
     can be converted into a form needed to support this program's operation.
 
+    This function also has some optional parameters for filtering
+    USE-conditional groups of a package based on the USE flag masks and forces
+    for the package in a profile.  If none of the arguments for the
+    'current_package', 'profile', and 'stable' parameters are 'None', then the
+    restriction returned by this function will not contain any dependencies
+    conditional upon USE settings not permitted by the profile.
+
     :param restrict: the instance of pkgcore's restriction class to process
+    :param current_package: the package which has 'restrict' as a dependency in
+        one of its dependency classes
+    :param profile: the profile whose USE flag masks and forces are to be
+        applied in USE-conditional group filtering
+    :param stable: whether USE flag masks and forces for stable packages should
+        be considered in USE-conditional group filtering
     :return: the preprocessing result
     """
-    restrict = unwrap_use_conditional(restrict)
+    restrict = unwrap_use_conditional(
+        restrict, current_package, profile, stable)
     restrict = strip_use_dep_from_restriction(restrict)
     return restrict
 
 
-def unwrap_use_conditional(restrict: restriction.base) -> restriction.base:
+def unwrap_use_conditional(
+        restrict: restriction.base,
+        current_package: Optional[package] = None,
+        profile: Optional[OnDiskProfile] = None,
+        stable: Optional[bool] = None
+) -> restriction.base:
     """
     Ensure the given restriction is not a USE-conditional group.  If it is,
     then the USE-conditional group will be converted into an unconditional
@@ -46,33 +76,75 @@ def unwrap_use_conditional(restrict: restriction.base) -> restriction.base:
     as-is.
 
     For a USE-conditional group such as
-        python? ( ${PYTHON_DEPS} dev-python/requests[${PYTHON_USEDEP}] )
+        java? ( >=virtual/jdk-1.8:* test? ( dev-java/junit:4 ) )
     this function effectively transforms it to the following all-of group:
-        ( ${PYTHON_DEPS} dev-python/requests[${PYTHON_USEDEP}] )
+        ( >=virtual/jdk-1.8:* dev-java/junit:4 )
 
-    When a package is being keyworded or stabilized, all the USE-conditional
-    dependencies for unmasked USE flags on the architecture in question needs
-    to be tested as well.  The purpose of this function is to promote these
-    USE-conditional dependencies to a generic one, so when the main packages
-    being keyworded or stabilized that use those dependencies are being tested,
-    the USE-conditional dependencies' keyword (either '**' or '~arch') can be
-    accepted with other generic dependencies together.
+    This function also has some optional parameters for filtering
+    USE-conditional groups of a package based on the USE flag masks and forces
+    for the package in a profile.  If none of the arguments for the
+    'current_package', 'profile', and 'stable' parameters are 'None', then the
+    restriction returned by this function will not contain any dependencies
+    conditional upon USE settings not permitted by the profile.
 
-    This does not interfere with USE flag masking.  For example, suppose a
-    package has a USE-conditional group as 'java? ( >=virtual/jdk-1.8:* )', and
-    it is being tested on an architecture where the 'java' USE flag is masked
-    because JDK is not keyworded or stabilized on it.  Accepting the '**' or
-    '~arch' keyword for >=virtual/jdk-1.8:* will not cause any changes because
-    the USE flag mask is dictated by package.use.mask or
-    package.use.stable.mask instead of the accepted keyword of the
-    USE-conditional dependencies.
+    For example, if the 'test' USE flag is masked for 'current_package', then
+    this function transforms the aforementioned USE-conditional group to the
+    following all-of group instead:
+        ( >=virtual/jdk-1.8:* )
+
+    The purpose of this function is to promote these USE-conditional
+    dependencies to generic ones, so when a package is being keyworded or
+    stabilized, all the USE-conditional dependencies (or, if a profile is
+    specified, all the dependencies for USE flags permitted by the profile) can
+    have their keyword (either '**' or '~arch') accepted for testing, just like
+    other generic, unconditional dependencies.
+
+    The following restriction types are supported:
+    - pkgcore.restrictions.packages.Conditional
+    - pkgcore.ebuild.atom.atom
+    - pkgcore.restrictions.boolean.AndRestriction
+    - pkgcore.restrictions.boolean.OrRestriction
+    These types shall cover every type of dependency specification permitted
+    for package dependency classes in section 8.2, PMS for EAPI 8. For other
+    types, this function behaves as an identity function: the returned
+    restriction is identical to the restriction passed in.
 
     :param restrict: the instance of pkgcore's restriction class to process
+    :param current_package: the package which has 'restrict' as a dependency in
+        one of its dependency classes
+    :param profile: the profile whose USE flag masks and forces are to be
+        applied in USE-conditional group filtering
+    :param stable: whether USE flag masks and forces for stable packages should
+        be considered in USE-conditional group filtering
     :return: a transformed restriction that is guaranteed to not represent a
         USE-conditional group
     """
     if isinstance(restrict, Conditional):
-        return boolean.AndRestriction(*restrict.payload)
+        if restrict.attr == 'use' and \
+                current_package is not None and \
+                profile is not None and \
+                stable is not None:
+            # As per specification in section 8.2 of PMS for EAPI 8,
+            # a USE-conditional group is defined with exactly one USE flag
+            use_flag = set(restrict.restriction.vals).pop()
+            if package_use_masked_in_profile(
+                    current_package, use_flag, profile, stable):
+                # The specified USE-conditional group never takes effect
+                # because the USE flag is masked or forced
+                return boolean.AndRestriction()
+
+        payloads = list()
+        for payload in restrict.payload:
+            payloads.append(unwrap_use_conditional(
+                payload, current_package, profile, stable))
+        return boolean.AndRestriction(*payloads)
+    elif isinstance(restrict, atom.atom):
+        return restrict
+    elif isinstance(restrict, boolean.AndRestriction) or \
+            isinstance(restrict, boolean.OrRestriction):
+        return type(restrict)(*map(
+            lambda r: unwrap_use_conditional(
+                r, current_package, profile, stable), restrict))
     else:
         return restrict
 
@@ -98,12 +170,19 @@ def strip_use_dep_from_restriction(restrict: restriction.base) \
     unacceptably-long program execution time for repositories as large as
     ::gentoo.
 
-    The following restriction types are supported, and they shall cover every
-    type of dependency specification permitted for package dependency classes
-    in section 8.2, PMS for EAPI 8:
+    The following restriction types are supported:
     - pkgcore.ebuild.atom.atom
     - pkgcore.restrictions.boolean.AndRestriction
     - pkgcore.restrictions.boolean.OrRestriction
+    These types shall cover every type of dependency specification permitted
+    for package dependency classes in section 8.2, PMS for EAPI 8, with the
+    notable exception of pkgcore.restrictions.packages.Conditional, which shall
+    be used only for USE-conditional groups for restrictions concerning
+    packages.  For a Conditional restriction, please pass it to the
+    'unwrap_use_conditional' function first, which transforms it to a
+    restriction of one of the above types.  Then, the returned restriction can
+    be passed to this function.
+
     For other types, this function behaves as an identity function: the
     returned restriction is identical to the restriction passed in.
 
@@ -112,22 +191,36 @@ def strip_use_dep_from_restriction(restrict: restriction.base) \
         dependency, under the condition that the original restriction's type is
         supported by this function
     """
-
-    def process_children(
-            boolean_restrict: boolean.base,
-            restriction_type: type
-    ) -> restriction.base:
-        restrictions_without_use = list()
-        for child in boolean_restrict:
-            child = preprocess_restriction(child)
-            restrictions_without_use.append(child)
-        return restriction_type(*restrictions_without_use)
-
     if isinstance(restrict, atom.atom):
         return restrict.no_usedeps
-    elif isinstance(restrict, boolean.AndRestriction):
-        return process_children(restrict, boolean.AndRestriction)
-    elif isinstance(restrict, boolean.OrRestriction):
-        return process_children(restrict, boolean.OrRestriction)
+    elif isinstance(restrict, boolean.AndRestriction) or \
+            isinstance(restrict, boolean.OrRestriction):
+        return type(restrict)(*map(strip_use_dep_from_restriction, restrict))
     else:
         return restrict
+
+
+def convert_and_restriction_to_list(and_restrict: boolean.AndRestriction) \
+        -> list[restriction.base]:
+    """
+    Convert an AndRestriction, which shall represent an all-of group of
+    dependencies, to a list containing all the child elements, in order.
+
+    This function is helpful when the pkgcore.repository.prototype.tree.match()
+    function is used to get the matching packages for each child element in an
+    all-of group.  If an AndRestriction with zero or more than one child is
+    passed to that function, it might not yield the expected result.  This
+    function puts all the children of the AndRestriction into a list, so that
+    function may be called against every element in the returned list.
+
+    :param and_restrict: the AndRestriction object to be decomposed
+    :return: a list containing all the child elements in 'and_restrict'
+    """
+    result = list()
+    for child in and_restrict:
+        if isinstance(child, boolean.AndRestriction) and \
+                not isinstance(child, atom.atom):
+            result.extend(convert_and_restriction_to_list(child))
+        else:
+            result.append(child)
+    return result
