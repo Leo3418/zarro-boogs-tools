@@ -9,11 +9,11 @@ KEYWORDS="~amd64"
 IUSE="force mask normal pkg-force pkg-mask pkg-stable-force pkg-stable-mask stable-force stable-mask"
 
 RDEPEND="
-	force?				( dev-libs/force )
-	mask?				( dev-libs/mask )
-	normal?				( dev-libs/normal )
-	pkg-force?			( dev-libs/pkg-force )
-	pkg-mask?			( dev-libs/pkg-mask )
+	force?			( dev-libs/force )
+	mask?			( dev-libs/mask )
+	normal?			( dev-libs/normal )
+	pkg-force?		( dev-libs/pkg-force )
+	pkg-mask?		( dev-libs/pkg-mask )
 	pkg-stable-force?	( dev-libs/pkg-stable-force )
 	pkg-stable-mask?	( dev-libs/pkg-stable-mask )
 	stable-force?		( dev-libs/stable-force )
