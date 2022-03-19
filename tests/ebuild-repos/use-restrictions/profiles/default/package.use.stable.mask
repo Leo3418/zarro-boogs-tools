@@ -1,0 +1,2 @@
+app-misc/restricted pkg-stable-mask
+~app-misc/restricted-by-version-1.0.0 pkg-stable-mask

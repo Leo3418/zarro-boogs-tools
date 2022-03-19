@@ -1,0 +1,9 @@
+force - A USE flag that is unconditionally forced
+mask - A USE flag that is unconditionally masked
+normal - A normal USE flag that is never masked or forced
+pkg-force - A USE flag that is unconditionally forced individually for a package
+pkg-mask - A USE flag that is unconditionally masked individually for a package
+pkg-stable-force - A USE flag that is forced on packages on a stable keyword only individually for a package
+pkg-stable-mask - A USE flag that is masked on packages on a stable keyword only individually for a package
+stable-force - A USE flag that is forced on packages on a stable keyword only
+stable-mask - A USE flag that is masked on packages on a stable keyword only
