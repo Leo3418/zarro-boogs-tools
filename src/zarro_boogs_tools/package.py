@@ -19,7 +19,8 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-from zarro_boogs_tools.pkgcore.restriction import preprocess_restriction
+from zarro_boogs_tools.pkgcore.restriction import \
+    convert_and_restriction_to_list, preprocess_restriction
 
 from typing import Callable, Iterable, Iterator, Optional
 
@@ -28,6 +29,7 @@ import pkgcore.ebuild.atom as atom
 import pkgcore.restrictions.boolean as boolean
 from pkgcore.ebuild.ebuild_src import package
 from pkgcore.ebuild.errors import MalformedAtom
+from pkgcore.ebuild.profiles import OnDiskProfile
 from pkgcore.ebuild.repository import UnconfiguredTree
 
 
@@ -111,7 +113,8 @@ def get_packages_to_process(
         main_package: package,
         target_keyword: str,
         repo: UnconfiguredTree,
-        pkg_filter: Optional[Callable[[Iterator[package]], Iterable]] = None
+        pkg_filter: Optional[Callable[[Iterator[package]], Iterable]] = None,
+        profile: Optional[OnDiskProfile] = None
 ) -> list[package]:
     """
     When keywording or stabilizing a package, find the dependencies that also
@@ -137,6 +140,13 @@ def get_packages_to_process(
     'pkg_filter' is never applied to 'main_package'; it is in effect only in
     dependency version selection.
 
+    'profile' can be used to apply USE flag restrictions set by the specified
+    profile, which affects the set of USE-conditional dependencies included in
+    the returned result.  If 'profile' is not 'None', and a USE-conditional
+    dependency group may never be enabled under the specified profile due to
+    USE flag masks or forces, then the USE-conditional group will be ignored by
+    this function.
+
     'pkg_filter' examples:
     - lambda pkgs: filter(lambda pkg: '~amd64' in pkg.keywords, pkgs)
         For each dependency, use the best version among all versions that are
@@ -146,15 +156,20 @@ def get_packages_to_process(
         stable on amd64 whenever it is available.
 
     Invocation examples:
-    - To keyword dev-java/ant-core and its dependencies on riscv and avoid
-      keywording dependencies that have not been stabilized on amd64 yet:
+    - To keyword dev-java/ant-core and its dependencies on riscv, preferring
+      versions of dependencies that have already been keyworded on riscv or
+      stabilized on amd64:
         atom = get_atom_obj_from_str('dev-java/ant-core')
         _, repo = nattka.package.find_repository(Path('/var/db/repos/gentoo'))
         target_keyword = '~riscv'
         best_version = get_best_version(atom, repo)
         packages_to_process = get_deps_to_process(
             best_version, target_keyword, repo,
-            lambda pkgs: filter(lambda pkg: 'amd64' in pkg.keywords, pkgs)
+            lambda pkgs: filter(
+                lambda pkg:
+                target_keyword in pkg.keywords or 'amd64' in pkg.keywords,
+                pkgs
+            )
         )
         # Keyword packages listed in 'packages_to_process'
 
@@ -166,8 +181,13 @@ def get_packages_to_process(
     :param pkg_filter: a filter to set a preference on the versions of
         dependencies chosen to be processed; omit or specify 'None' to skip any
         filtering
+    :param profile: a profile to apply USE flag restrictions when dependencies
+        are being selected; omit or specify 'None' to include dependencies from
+        all USE-conditional groups
     :return: a list of the selected packages to process
     """
+    stable = not target_keyword.startswith('~')
+
     # Run an ordinary breadth-first search in the package's dependency graph
     result = list()
     main_package_singleton = [main_package]
@@ -187,9 +207,10 @@ def get_packages_to_process(
                           next_pkg.pdepend, next_pkg.idepend]:
             deps_restrictions = deps_restrictions.union(dep_class.restrictions)
 
-        processed_restrictions = set()
+        processed_restrictions = list()
         for restriction in deps_restrictions:
-            restriction = preprocess_restriction(restriction)
+            restriction = preprocess_restriction(
+                restriction, next_pkg, profile, stable)
             if isinstance(restriction, atom.atom) and restriction.blocks:
                 # Do not process dependencies specified as a block
                 continue
@@ -198,10 +219,10 @@ def get_packages_to_process(
             # get_best_version() function directly, 'None' would be returned
             if isinstance(restriction, boolean.AndRestriction) and \
                     not isinstance(restriction, atom.atom):
-                processed_restrictions = \
-                    processed_restrictions.union(restriction)
+                processed_restrictions.extend(
+                    convert_and_restriction_to_list(restriction))
             else:
-                processed_restrictions.add(restriction)
+                processed_restrictions.append(restriction)
 
         for restriction in processed_restrictions:
             dep_pkg = get_best_version(restriction, repo, pkg_filter)
