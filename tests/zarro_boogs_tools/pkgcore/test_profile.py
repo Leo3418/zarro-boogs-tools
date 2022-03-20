@@ -32,47 +32,58 @@ from pkgcore.ebuild.profiles import OnDiskProfile
 
 
 class TestProfile(unittest.TestCase):
-    def setUp(self):
+    use_restrictions = None
+    free0 = None
+    free1 = None
+    restricted0 = None
+    restricted1 = None
+    restricted_by_version0 = None
+    restricted_by_version1 = None
+    unrestricted_packages = None
+    restricted_packages = None
+
+    @classmethod
+    def setUpClass(cls):
         test_repo_path = 'tests/ebuild-repos/use-restrictions'
         _, use_restrictions = nattka.package.find_repository(
             Path(test_repo_path))
-        self.use_restrictions = use_restrictions
-        self.profile = OnDiskProfile(
+        cls.use_restrictions = use_restrictions
+        cls.profile = OnDiskProfile(
             os.path.join(test_repo_path, 'profiles'), 'default')
-        self.free0 = get_best_version(
+        cls.free0 = get_best_version(
             get_atom_obj_from_str('~app-misc/free-1.0.0'),
-            self.use_restrictions
+            cls.use_restrictions
         )
-        self.free1 = get_best_version(
+        cls.free1 = get_best_version(
             get_atom_obj_from_str('~app-misc/free-1.0.1'),
-            self.use_restrictions
+            cls.use_restrictions
         )
-        self.restricted0 = get_best_version(
+        cls.restricted0 = get_best_version(
             get_atom_obj_from_str('~app-misc/restricted-1.0.0'),
-            self.use_restrictions
+            cls.use_restrictions
         )
-        self.restricted1 = get_best_version(
+        cls.restricted1 = get_best_version(
             get_atom_obj_from_str('~app-misc/restricted-1.0.1'),
-            self.use_restrictions
+            cls.use_restrictions
         )
-        self.restricted_by_version0 = get_best_version(
+        cls.restricted_by_version0 = get_best_version(
             get_atom_obj_from_str('~app-misc/restricted-by-version-1.0.0'),
-            self.use_restrictions
+            cls.use_restrictions
         )
-        self.restricted_by_version1 = get_best_version(
+        cls.restricted_by_version1 = get_best_version(
             get_atom_obj_from_str('~app-misc/restricted-by-version-1.0.1'),
-            self.use_restrictions
+            cls.use_restrictions
         )
-        self.unrestricted_packages = [
-            self.free0, self.free1,
-            self.restricted_by_version1
+        cls.unrestricted_packages = [
+            cls.free0, cls.free1,
+            cls.restricted_by_version1
         ]
-        self.restricted_packages = [
-            self.restricted0, self.restricted1,
-            self.restricted_by_version0
+        cls.restricted_packages = [
+            cls.restricted0, cls.restricted1,
+            cls.restricted_by_version0
         ]
-        self.all_packages = \
-            self.unrestricted_packages + self.restricted_packages
+        cls.all_packages = \
+            cls.unrestricted_packages + cls.restricted_packages
 
     def helper_package_use_masked_in_profile_against_packages(
             self,

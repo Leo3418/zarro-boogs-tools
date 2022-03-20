@@ -36,6 +36,9 @@ import pkgcore.restrictions.restriction as restriction
 
 # noinspection PyTypeChecker
 class TestRestriction(unittest.TestCase):
+    etr_simplified = None
+    etr = None
+
     @staticmethod
     def find_first_use_conditional(dep_class) -> Optional[restriction.base]:
         for restrict in dep_class.restrictions:
@@ -43,19 +46,20 @@ class TestRestriction(unittest.TestCase):
                 return restrict
         return None
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         _, etr_simplified = nattka.package.find_repository(
             Path('tests/ebuild-repos/etr-simplified'))
-        self.etr_simplified = etr_simplified
+        cls.etr_simplified = etr_simplified
         _, java = nattka.package.find_repository(
             Path('tests/ebuild-repos/java'))
-        self.java = java
+        cls.java = java
 
-        self.etr = get_best_version(
+        cls.etr = get_best_version(
             get_atom_obj_from_str('games-action/extreme-tuxracer'),
-            self.etr_simplified
+            cls.etr_simplified
         )
-        self.etr_use_cond = self.find_first_use_conditional(self.etr.bdepend)
+        cls.etr_use_cond = cls.find_first_use_conditional(cls.etr.bdepend)
 
     def test_preprocess_restriction(self):
         """
