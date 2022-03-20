@@ -22,9 +22,11 @@
 import unittest
 from zarro_boogs_tools.package import *
 
+import os.path
 from pathlib import Path
 
 import nattka.package
+from pkgcore.ebuild.profiles import OnDiskProfile
 
 
 class TestPackage(unittest.TestCase):
@@ -209,7 +211,8 @@ class TestPackage(unittest.TestCase):
         etr_pkgs = get_packages_to_process(etr, '~riscv', etr_simplified)
         self.assertEqual(2, len(etr_pkgs))
         etr_pkgs_strs = [pkg.cpvstr for pkg in etr_pkgs]
-        self.assertTrue('games-action/extreme-tuxracer-0.8.1_p1' in etr_pkgs_strs)
+        self.assertTrue(
+            'games-action/extreme-tuxracer-0.8.1_p1' in etr_pkgs_strs)
         self.assertTrue('media-sound/modplugtools-0.5.3' in etr_pkgs_strs)
 
     def test_get_packages_to_process_pkg_filter(self):
@@ -221,15 +224,78 @@ class TestPackage(unittest.TestCase):
             Path('tests/ebuild-repos/java'))
         ant_core = get_best_version(
             get_atom_obj_from_str('dev-java/ant-core'), java)
+        target_keyword = '~riscv'
         ant_core_pkgs = get_packages_to_process(
-            ant_core, '~riscv', java,
-            lambda pkgs: filter(lambda pkg: 'amd64' in pkg.keywords, pkgs))
+            ant_core, target_keyword, java,
+            lambda pkgs: filter(
+                lambda pkg:
+                target_keyword in pkg.keywords or 'amd64' in pkg.keywords,
+                pkgs)
+        )
+        self.assertEqual(4, len(ant_core_pkgs))
+        ant_core_pkgs_strs = [pkg.cpvstr for pkg in ant_core_pkgs]
+        self.assertTrue('dev-java/ant-core-1.10.9-r3' in ant_core_pkgs_strs)
+        self.assertTrue('virtual/jdk-11-r2' in ant_core_pkgs_strs)
+        self.assertTrue('dev-java/openjdk-bin-11.0.14_p9-r1'
+                        in ant_core_pkgs_strs)
+        self.assertTrue('sec-policy/selinux-java-2.20210908-r1'
+                        in ant_core_pkgs_strs)
+
+    def test_get_packages_to_process_profile(self):
+        """
+        Test if the 'get_packages_to_process' function respects USE flag
+        restrictions in the profile specified with the 'profile' parameter.
+        """
+        java_path = 'tests/ebuild-repos/java'
+        _, java = nattka.package.find_repository(Path(java_path))
+        ant_core = get_best_version(
+            get_atom_obj_from_str('dev-java/ant-core'), java)
+        # This profile masks the 'selinux' USE flag, so no SELinux-related
+        # dependency should be included in the result
+        profile = OnDiskProfile(os.path.join(java_path, 'profiles'), 'base')
+        target_keyword = '~riscv'
+        ant_core_pkgs = get_packages_to_process(
+            ant_core, target_keyword, java,
+            lambda pkgs: filter(
+                lambda pkg:
+                target_keyword in pkg.keywords or 'amd64' in pkg.keywords,
+                pkgs),
+            profile
+        )
         self.assertEqual(3, len(ant_core_pkgs))
         ant_core_pkgs_strs = [pkg.cpvstr for pkg in ant_core_pkgs]
         self.assertTrue('dev-java/ant-core-1.10.9-r3' in ant_core_pkgs_strs)
         self.assertTrue('virtual/jdk-11-r2' in ant_core_pkgs_strs)
         self.assertTrue('dev-java/openjdk-bin-11.0.14_p9-r1'
                         in ant_core_pkgs_strs)
+
+    def test_get_packages_to_process_profile_stable(self):
+        """
+        Test if the 'get_packages_to_process' function respects USE flag
+        restrictions exclusively for stable packages in the profile specified
+        with the 'profile' parameter when a package is stabilized.
+        """
+        use_restrictions_path = 'tests/ebuild-repos/use-restrictions'
+        _, use_restrictions = nattka.package.find_repository(
+            Path(use_restrictions_path))
+        restricted = get_best_version(
+            get_atom_obj_from_str('=app-misc/restricted-1.0.1'),
+            use_restrictions
+        )
+        profile = OnDiskProfile(
+            os.path.join(use_restrictions_path, 'profiles'), 'default')
+        target_keyword = 'x86'
+        restricted_pkgs = get_packages_to_process(
+            restricted, target_keyword, use_restrictions, None, profile)
+        self.assertEqual(6, len(restricted_pkgs))
+        restricted_pkgs_strs = [pkg.cpvstr for pkg in restricted_pkgs]
+        # Neither dev-libs/stable-mask nor dev-libs/pkg-stable-mask is expected
+        self.assertTrue('app-misc/restricted-1.0.1' in restricted_pkgs_strs)
+        self.assertTrue('dev-libs/force-0' in restricted_pkgs_strs)
+        self.assertTrue('dev-libs/normal-0' in restricted_pkgs_strs)
+        self.assertTrue('dev-libs/pkg-force-0' in restricted_pkgs_strs)
+        self.assertTrue('dev-libs/pkg-stable-force-0' in restricted_pkgs_strs)
+        self.assertTrue('dev-libs/stable-force-0' in restricted_pkgs_strs)
 
     def test_get_packages_to_process_ignores_blocker(self):
         """

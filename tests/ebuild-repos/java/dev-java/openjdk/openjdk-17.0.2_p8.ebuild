@@ -8,7 +8,11 @@ SLOT="$(ver_cut 1)"
 
 DESCRIPTION="Open source implementation of the Java programming language"
 KEYWORDS="amd64 ~arm arm64 ppc64 ~x86"
-IUSE="gentoo-vm headless-awt system-bootstrap"
+IUSE="gentoo-vm headless-awt selinux system-bootstrap"
+
+RDEPEND="
+	selinux? ( sec-policy/selinux-java )
+"
 
 DEPEND="
 	system-bootstrap? (

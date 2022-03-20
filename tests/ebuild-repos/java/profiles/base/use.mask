@@ -1,0 +1,19 @@
+# Copyright 1999-2022 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+# Mask SELinux by default; it should be unmasked in SELinux profiles
+selinux
+
+# Mask ELIBC, KERNEL, and USERLAND flags that apply to specific profiles.
+userland_BSD
+
+elibc_bionic
+elibc_Cygwin
+elibc_Darwin
+elibc_musl
+elibc_SunOS
+elibc_Winnt
+
+kernel_Darwin
+kernel_SunOS
+kernel_Winnt

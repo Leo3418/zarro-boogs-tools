@@ -8,4 +8,12 @@ SLOT=${MY_PV%%[.+]*}
 
 DESCRIPTION="Prebuilt Java JDK binaries provided by Eclipse Temurin"
 KEYWORDS="amd64 ~arm arm64 ppc64 ~x64-macos"
-IUSE="headless-awt"
+IUSE="headless-awt selinux"
+
+RDEPEND="
+	kernel_linux? (
+		elibc_glibc? ( >=sys-libs/glibc-2.2.5:* )
+		elibc_musl? ( sys-libs/musl )
+		selinux? ( sec-policy/selinux-java )
+	)
+"

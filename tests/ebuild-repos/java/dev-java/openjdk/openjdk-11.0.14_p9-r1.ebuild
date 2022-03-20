@@ -8,7 +8,11 @@ SLOT="${MY_PV%%[.+]*}"
 
 DESCRIPTION="Open source implementation of the Java programming language"
 KEYWORDS="amd64 ~arm arm64 ppc64 ~x86"
-IUSE="headless-awt system-bootstrap"
+IUSE="headless-awt selinux system-bootstrap"
+
+RDEPEND="
+	selinux? ( sec-policy/selinux-java )
+"
 
 DEPEND="
 	system-bootstrap? (
