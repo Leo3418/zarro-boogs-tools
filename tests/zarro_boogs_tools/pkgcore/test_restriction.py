@@ -19,11 +19,12 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-import unittest
+from .. import unittest
 from zarro_boogs_tools.package import *
 from zarro_boogs_tools.pkgcore.restriction import *
 
 import os.path
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -55,6 +56,8 @@ class TestRestriction(unittest.TestCase):
             Path('tests/ebuild-repos/java'))
         cls.java = java
 
+        # Suppress warnings due to pkgcore not seemingly closing ebuild files
+        warnings.simplefilter('ignore', ResourceWarning)
         cls.etr = get_best_version(
             get_atom_obj_from_str('games-action/extreme-tuxracer'),
             cls.etr_simplified

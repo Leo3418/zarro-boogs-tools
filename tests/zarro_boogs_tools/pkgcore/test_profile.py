@@ -19,7 +19,7 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-import unittest
+from .. import unittest
 from zarro_boogs_tools.package import *
 from zarro_boogs_tools.pkgcore.profile import *
 
