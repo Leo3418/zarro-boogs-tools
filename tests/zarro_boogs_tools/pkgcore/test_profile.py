@@ -24,6 +24,7 @@ from zarro_boogs_tools.package import *
 from zarro_boogs_tools.pkgcore.profile import *
 
 import os.path
+import warnings
 from pathlib import Path
 from typing import Iterable
 
@@ -44,6 +45,9 @@ class TestProfile(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Suppress warnings due to pkgcore not seemingly closing ebuild files
+        warnings.simplefilter('ignore', ResourceWarning)
+
         test_repo_path = 'tests/ebuild-repos/use-restrictions'
         _, use_restrictions = nattka.package.find_repository(
             Path(test_repo_path))
