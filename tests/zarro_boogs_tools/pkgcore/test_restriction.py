@@ -23,11 +23,13 @@ import unittest
 from zarro_boogs_tools.package import *
 from zarro_boogs_tools.pkgcore.restriction import *
 
+import os.path
 from pathlib import Path
 from typing import Optional
 
 import nattka.package
 import pkgcore.ebuild.atom as atom
+from pkgcore.ebuild.profiles import OnDiskProfile
 import pkgcore.restrictions.boolean as boolean
 import pkgcore.restrictions.restriction as restriction
 
@@ -114,6 +116,49 @@ class TestRestriction(unittest.TestCase):
         self.assertEqual('media-libs/libsfml:0=',
                          etr_normal_restrict_unwrapped.__str__())
 
+        openjdk11 = get_best_version(
+            get_atom_obj_from_str('dev-java/openjdk:11'),
+            self.java
+        )
+        openjdk11_use_cond = self.find_first_use_conditional(openjdk11.depend)
+        openjdk11_use_cond_unwrapped = \
+            unwrap_use_conditional(openjdk11_use_cond)
+        self.assertIsInstance(
+            openjdk11_use_cond_unwrapped, boolean.AndRestriction)
+        self.assertEqual(1, len(openjdk11_use_cond_unwrapped))
+        openjdk11_use_cond_children = openjdk11_use_cond_unwrapped[0]
+        self.assertIsInstance(
+            openjdk11_use_cond_children, boolean.OrRestriction)
+        self.assertEqual(2, len(openjdk11_use_cond_children))
+        openjdk11_use_cond_children_strs = [a.__str__() for a in
+                                            openjdk11_use_cond_children]
+        self.assertTrue(
+            'dev-java/openjdk-bin:11' in openjdk11_use_cond_children_strs)
+        self.assertTrue(
+            'dev-java/openjdk:11' in openjdk11_use_cond_children_strs)
+
+    def test_unwrap_use_conditional_profile(self):
+        """
+        Test if the 'unwrap_use_conditional' function can drop USE-conditional
+        groups defined with USE flags restricted by a profile.
+        """
+        profile = OnDiskProfile(
+            os.path.join(self.java.base, 'profiles'), 'base')
+        openjdk_bin17 = get_best_version(
+            get_atom_obj_from_str('dev-java/openjdk-bin:17'),
+            self.java
+        )
+        openjdk_bin17_use_cond = \
+            self.find_first_use_conditional(openjdk_bin17.rdepend)
+        openjdk_bin17_use_cond_unwrapped = unwrap_use_conditional(
+            openjdk_bin17_use_cond, openjdk_bin17, profile, False)
+        self.assertIsInstance(
+            openjdk_bin17_use_cond_unwrapped, boolean.AndRestriction)
+        # There should be only one atom in the result
+        for child in openjdk_bin17_use_cond_unwrapped:
+            if len(child) > 0:
+                self.assertEqual('>=sys-libs/glibc-2.2.5:*', child[0].__str__())
+
     def test_strip_use_dep_from_restriction(self):
         """
         Test if the 'strip_use_dep_from_restriction' function can correctly
@@ -156,6 +201,28 @@ class TestRestriction(unittest.TestCase):
         self.assertTrue('dev-java/icedtea:8' in openjdk8_use_dep_strs)
 
         # AndRestriction is covered by test_preprocess_restriction
+
+    def test_convert_and_restriction_to_list(self):
+        """
+        Test if the 'convert_and_restriction_to_list' function returns the
+        correct list for an AndRestriction.
+        """
+        empty_restriction = boolean.AndRestriction()
+        self.assertEqual(
+            0, len(convert_and_restriction_to_list(empty_restriction)))
+
+        jdk = get_atom_obj_from_str('virtual/jdk')
+        singleton_restriction = boolean.AndRestriction(jdk)
+        self.assertEqual(
+            1, len(convert_and_restriction_to_list(singleton_restriction)))
+        self.assertEqual(jdk, singleton_restriction[0])
+
+        jre = get_atom_obj_from_str('virtual/jre')
+        multiple_restrictions = boolean.AndRestriction(jdk, jre)
+        self.assertEqual(
+            2, len(convert_and_restriction_to_list(multiple_restrictions)))
+        self.assertEqual(jdk, multiple_restrictions[0])
+        self.assertEqual(jre, multiple_restrictions[1])
 
 
 if __name__ == '__main__':
