@@ -22,7 +22,8 @@
 from zarro_boogs_tools.pkgcore.restriction import \
     convert_and_restriction_to_list, preprocess_restriction
 
-from typing import Callable, Iterable, Iterator, Optional
+from collections.abc import Iterable, Iterator
+from typing import Callable, Optional
 
 import nattka.package
 import pkgcore.ebuild.atom as atom
@@ -31,6 +32,9 @@ from pkgcore.ebuild.ebuild_src import package
 from pkgcore.ebuild.errors import MalformedAtom
 from pkgcore.ebuild.profiles import OnDiskProfile
 from pkgcore.ebuild.repository import UnconfiguredTree
+
+"""A type alias for package filters."""
+PackageFilter = Callable[[Iterator[package]], Iterable[package]]
 
 
 def get_atom_obj_from_str(atom_str: str) -> atom:
@@ -86,7 +90,7 @@ def check_atom_obj_for_keywording(atom_obj: atom) -> Optional[str]:
 def get_best_version(
         atom_obj: atom,
         repo: UnconfiguredTree,
-        pkg_filter: Optional[Callable[[Iterator[package]], Iterable]] = None
+        pkg_filter: Optional[PackageFilter] = None
 ) -> Optional[package]:
     """
     Find the best version of the package that satisfies the specified atom in
@@ -113,7 +117,7 @@ def get_packages_to_process(
         main_package: package,
         target_keyword: str,
         repo: UnconfiguredTree,
-        pkg_filter: Optional[Callable[[Iterator[package]], Iterable]] = None,
+        pkg_filter: Optional[PackageFilter] = None,
         profile: Optional[OnDiskProfile] = None
 ) -> list[package]:
     """

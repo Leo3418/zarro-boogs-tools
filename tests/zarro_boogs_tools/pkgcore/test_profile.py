@@ -25,8 +25,8 @@ from zarro_boogs_tools.pkgcore.profile import *
 
 import os.path
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import nattka.package
 from pkgcore.ebuild.profiles import OnDiskProfile
