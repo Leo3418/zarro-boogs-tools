@@ -50,6 +50,43 @@ class TestPortage(unittest.TestCase):
             result = get_accept_keywords_file_basename(atom_obj)
             check_visibility_to_portage(result)
 
+    def test_get_accept_keywords_contents(self):
+        """
+        Test if 'get_accept_keywords_contents' function returns lines to be
+        added to /etc/portage/package.accept_keywords correctly based on the
+        specified packages and target keyword.
+        """
+        # Map each new keyword to the keyword that must be accepted to install
+        # the package before the new keyword is added
+        keywords_dict = {
+            'amd64': '~amd64',
+            '~amd64': '**',
+            'x86': '~x86',
+            '~x86': '**'
+        }
+
+        no_pkgs = []
+        for keyword in keywords_dict:
+            self.assertEqual(0, len(list(
+                get_accept_keywords_contents(no_pkgs, keyword))))
+
+        jdk_cpvstr = '=virtual/jdk-11-r2'
+        jdk_atom_obj = get_atom_obj_from_str(jdk_cpvstr)
+        single_pkg = [jdk_atom_obj]
+        for keyword in keywords_dict:
+            lines = list(get_accept_keywords_contents(single_pkg, keyword))
+            self.assertEqual(len(single_pkg), len(lines))
+            self.assertTrue(f'{jdk_cpvstr} {keywords_dict[keyword]}' in lines)
+
+        jre_cpvstr = '=virtual/jre-11-r2'
+        jre_atom_obj = get_atom_obj_from_str(jre_cpvstr)
+        multiple_pkgs = [jdk_atom_obj, jre_atom_obj]
+        for keyword in keywords_dict:
+            lines = list(get_accept_keywords_contents(multiple_pkgs, keyword))
+            self.assertEqual(len(multiple_pkgs), len(lines))
+            self.assertTrue(f'{jdk_cpvstr} {keywords_dict[keyword]}' in lines)
+            self.assertTrue(f'{jre_cpvstr} {keywords_dict[keyword]}' in lines)
+
 
 if __name__ == '__main__':
     unittest.main()

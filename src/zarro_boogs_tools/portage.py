@@ -23,9 +23,11 @@ import zarro_boogs_tools
 
 import os.path
 import sys
+from collections.abc import Iterable
 from typing import Optional
 
 import pkgcore.ebuild.atom as atom
+from pkgcore.ebuild.ebuild_src import package
 
 
 def find_portage_config_root() -> Optional[str]:
@@ -72,3 +74,27 @@ def get_accept_keywords_file_basename(atom_obj: atom) -> str:
     file_name_atom = \
         f'{atom_obj.category}/{atom_obj.package}'.replace('/', '--')
     return f'{get_portage_config_file_prefix()}{file_name_atom}'
+
+
+def get_accept_keywords_contents(
+        packages: Iterable[package], target_keyword: str) -> Iterable[str]:
+    """
+    Get the lines to be added to /etc/portage/package.accept_keywords that
+    allows the specified packages to be tested before the specified keyword can
+    be applied to them.
+
+    :param packages: the packages to test
+    :param target_keyword: the keyword that the packages are expected to have
+        after testing
+    :return: the lines to be added to /etc/portage/package.accept_keywords to
+        accept the current keywords for the specified packages
+    """
+    if target_keyword.startswith('~'):
+        keyword_to_accept = '**'
+    else:
+        keyword_to_accept = f'~{target_keyword}'
+
+    result = list()
+    for pkg in packages:
+        result.append(f'={pkg.cpvstr} {keyword_to_accept}')
+    return result
