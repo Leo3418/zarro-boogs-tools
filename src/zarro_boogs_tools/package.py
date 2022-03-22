@@ -238,3 +238,26 @@ def get_packages_to_process(
                 visited_pkgs.add(dep_pkg)
 
     return result
+
+
+def get_keyword_matching_pkg_filter(*keywords: str) -> PackageFilter:
+    """
+    Obtain a package filter that may be used to prevent some most bleeding-edge
+    versions of packages from being selected for keywording or stabilization.
+    If any keyword argument is specified, then the returned package filter will
+    filter out packages that are invisible on every keyword specified in the
+    arguments to this function.
+
+    :param keywords: the keywords to check against the packages passed to the
+        returned filter
+    :return: a package filter that selects only packages visible on at least
+        one of the 'keywords'
+    """
+    def is_visible_on_any_keyword(pkg: package) -> bool:
+        for keyword in keywords:
+            if keyword in pkg.keywords or keyword.lstrip('~') in pkg.keywords:
+                return True
+        return False
+
+    return lambda pkgs: filter(
+        lambda pkg: is_visible_on_any_keyword(pkg), pkgs)

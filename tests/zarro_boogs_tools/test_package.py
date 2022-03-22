@@ -329,6 +329,76 @@ class TestPackage(unittest.TestCase):
         c3p0_pkgs_strs = [pkg.cpvstr for pkg in c3p0_pkgs]
         self.assertTrue('dev-java/c3p0-0.9.5.5-r1' in c3p0_pkgs_strs)
 
+    def test_get_keyword_matching_pkg_filter(self):
+        """
+        Test if the filter returned by the 'get_keyword_matching_pkg_filter'
+        function filters out packages that are not visible on any specified
+        keyword in the arguments.
+        """
+        _, java = nattka.package.find_repository(
+            Path('tests/ebuild-repos/java'))
+        pkg_filter_uriscv = get_keyword_matching_pkg_filter(
+            '~riscv')
+        pkg_filter_uriscv_uamd64 = get_keyword_matching_pkg_filter(
+            '~riscv', '~amd64')
+        pkg_filter_uriscv_amd64 = get_keyword_matching_pkg_filter(
+            '~riscv', 'amd64')
+        pkg_filter_uamd64 = get_keyword_matching_pkg_filter(
+            '~amd64')
+        pkg_filter_uamd64_amd64 = get_keyword_matching_pkg_filter(
+            '~amd64', 'amd64')
+        pkg_filter_amd64 = get_keyword_matching_pkg_filter(
+            'amd64')
+        musl_atom = get_atom_obj_from_str('sys-libs/musl')
+        jdk_atom = get_atom_obj_from_str('virtual/jdk')
+        glibc_atom = get_atom_obj_from_str('sys-libs/glibc')
+
+        self.assertEqual('1.2.2-r8', get_best_version(
+            musl_atom, java, pkg_filter_uriscv).PVR)
+        self.assertEqual('1.2.2-r8', get_best_version(
+            musl_atom, java, pkg_filter_uriscv_uamd64).PVR)
+        self.assertEqual('1.2.2-r8', get_best_version(
+            musl_atom, java, pkg_filter_uriscv_amd64).PVR)
+        self.assertIsNone(get_best_version(
+            jdk_atom, java, pkg_filter_uriscv))
+        self.assertEqual('17', get_best_version(
+            jdk_atom, java, pkg_filter_uriscv_uamd64).PVR)
+        self.assertEqual('11-r2', get_best_version(
+            jdk_atom, java, pkg_filter_uriscv_amd64).PVR)
+        self.assertEqual('2.34-r10', get_best_version(
+            glibc_atom, java, pkg_filter_uamd64).PVR)
+        self.assertEqual('2.34-r10', get_best_version(
+            glibc_atom, java, pkg_filter_uamd64_amd64).PVR)
+        self.assertEqual('2.33-r13', get_best_version(
+            glibc_atom, java, pkg_filter_amd64).PVR)
+
+    def test_get_keyword_matching_pkg_filter_unstable_older_than_stable(self):
+        """
+        Test if the filter returned by the 'get_keyword_matching_pkg_filter'
+        function returns the latest stable version of a package when the
+        package has an older unstable version.
+        """
+        _, java = nattka.package.find_repository(
+            Path('tests/ebuild-repos/java'))
+        pkg_filter_uriscv_uarm64 = get_keyword_matching_pkg_filter(
+            '~riscv', '~arm64')
+        pkg_filter_uriscv_arm64 = get_keyword_matching_pkg_filter(
+            '~riscv', 'arm64')
+        pkg_filter_arm_uarm64 = get_keyword_matching_pkg_filter(
+            'arm', '~arm64')
+        pkg_filter_arm_arm64 = get_keyword_matching_pkg_filter(
+            'arm', 'arm64')
+        antlr4_atom = get_atom_obj_from_str('dev-java/antlr:4')
+
+        self.assertEqual('4.9.3', get_best_version(
+            antlr4_atom, java, pkg_filter_uriscv_uarm64).PVR)
+        self.assertEqual('4.9.3', get_best_version(
+            antlr4_atom, java, pkg_filter_uriscv_arm64).PVR)
+        self.assertEqual('4.9.3', get_best_version(
+            antlr4_atom, java, pkg_filter_arm_uarm64).PVR)
+        self.assertEqual('4.9.3', get_best_version(
+            antlr4_atom, java, pkg_filter_arm_arm64).PVR)
+
 
 if __name__ == '__main__':
     unittest.main()
