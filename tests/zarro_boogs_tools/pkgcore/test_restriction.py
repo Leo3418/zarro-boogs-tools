@@ -73,8 +73,7 @@ class TestRestriction(unittest.TestCase):
         self.assertIsInstance(
             etr_use_cond_preprocessed, boolean.AndRestriction)
         self.assertEqual(2, len(etr_use_cond_preprocessed))
-        etr_use_cond_strs = [a.__str__() for a in
-                             etr_use_cond_preprocessed]
+        etr_use_cond_strs = [str(a) for a in etr_use_cond_preprocessed]
         self.assertTrue('media-sound/modplugtools' in etr_use_cond_strs)
         self.assertTrue('media-sound/sox' in etr_use_cond_strs)
 
@@ -88,7 +87,7 @@ class TestRestriction(unittest.TestCase):
         self.assertIsInstance(
             etr_use_cond_unwrapped, boolean.AndRestriction)
         self.assertEqual(2, len(etr_use_cond_unwrapped))
-        etr_use_cond_strs = [a.__str__() for a in etr_use_cond_unwrapped]
+        etr_use_cond_strs = [str(a) for a in etr_use_cond_unwrapped]
         self.assertTrue('media-sound/modplugtools' in etr_use_cond_strs)
         self.assertTrue('media-sound/sox[ogg]' in etr_use_cond_strs)
 
@@ -101,8 +100,7 @@ class TestRestriction(unittest.TestCase):
         self.assertIsInstance(
             libsfml_use_cond_unwrapped, boolean.AndRestriction)
         self.assertEqual(1, len(libsfml_use_cond_unwrapped))
-        libsfml_use_cond_strs = [a.__str__() for a in
-                                 libsfml_use_cond_unwrapped]
+        libsfml_use_cond_strs = [str(a) for a in libsfml_use_cond_unwrapped]
         self.assertTrue('app-doc/doxygen' in libsfml_use_cond_strs)
 
         sox = get_best_version(
@@ -113,7 +111,7 @@ class TestRestriction(unittest.TestCase):
         sox_use_cond_unwrapped = unwrap_use_conditional(sox_use_cond)
         self.assertIsInstance(sox_use_cond_unwrapped, boolean.AndRestriction)
         self.assertEqual(1, len(sox_use_cond_unwrapped))
-        sox_use_cond_strs = [a.__str__() for a in sox_use_cond_unwrapped]
+        sox_use_cond_strs = [str(a) for a in sox_use_cond_unwrapped]
         self.assertTrue('media-libs/libogg' in sox_use_cond_strs)
 
         etr_normal_restrict = self.etr.rdepend[0]
@@ -121,7 +119,7 @@ class TestRestriction(unittest.TestCase):
             unwrap_use_conditional(etr_normal_restrict)
         self.assertIsInstance(etr_normal_restrict_unwrapped, atom.atom)
         self.assertEqual('media-libs/libsfml:0=',
-                         etr_normal_restrict_unwrapped.__str__())
+                         str(etr_normal_restrict_unwrapped))
 
         openjdk11 = get_best_version(
             get_atom_obj_from_str('dev-java/openjdk:11'),
@@ -137,7 +135,7 @@ class TestRestriction(unittest.TestCase):
         self.assertIsInstance(
             openjdk11_use_cond_children, boolean.OrRestriction)
         self.assertEqual(2, len(openjdk11_use_cond_children))
-        openjdk11_use_cond_children_strs = [a.__str__() for a in
+        openjdk11_use_cond_children_strs = [str(a) for a in
                                             openjdk11_use_cond_children]
         self.assertTrue(
             'dev-java/openjdk-bin:11' in openjdk11_use_cond_children_strs)
@@ -164,7 +162,7 @@ class TestRestriction(unittest.TestCase):
         # There should be only one atom in the result
         for child in openjdk_bin17_use_cond_unwrapped:
             if len(child) > 0:
-                self.assertEqual('>=sys-libs/glibc-2.2.5:*', child[0].__str__())
+                self.assertEqual('>=sys-libs/glibc-2.2.5:*', str(child[0]))
 
     def test_strip_use_dep_from_restriction(self):
         """
@@ -181,14 +179,14 @@ class TestRestriction(unittest.TestCase):
             strip_use_dep_from_restriction(pkgconfig_use_dep)
         self.assertIsInstance(pkgconfig_use_dep_stripped, atom.atom)
         self.assertEqual('>=dev-util/pkgconf-1.3.7',
-                         pkgconfig_use_dep_stripped.__str__())
+                         str(pkgconfig_use_dep_stripped))
 
         jdk = get_best_version(get_atom_obj_from_str('virtual/jdk'), self.java)
         jdk_use_dep = jdk.rdepend[0]
         jdk_use_dep_stripped = strip_use_dep_from_restriction(jdk_use_dep)
         self.assertIsInstance(jdk_use_dep_stripped, boolean.OrRestriction)
         self.assertEqual(2, len(jdk_use_dep_stripped))
-        jdk_use_dep_strs = [a.__str__() for a in jdk_use_dep_stripped]
+        jdk_use_dep_strs = [str(a) for a in jdk_use_dep_stripped]
         self.assertTrue('dev-java/openjdk-bin:17' in jdk_use_dep_strs)
         self.assertTrue('dev-java/openjdk:17' in jdk_use_dep_strs)
 
@@ -201,7 +199,7 @@ class TestRestriction(unittest.TestCase):
             strip_use_dep_from_restriction(openjdk8_use_dep)
         self.assertIsInstance(openjdk8_use_dep_stripped, boolean.OrRestriction)
         self.assertEqual(4, len(openjdk8_use_dep_stripped))
-        openjdk8_use_dep_strs = [a.__str__() for a in openjdk8_use_dep_stripped]
+        openjdk8_use_dep_strs = [str(a) for a in openjdk8_use_dep_stripped]
         self.assertTrue('dev-java/openjdk-bin:8' in openjdk8_use_dep_strs)
         self.assertTrue('dev-java/icedtea-bin:8' in openjdk8_use_dep_strs)
         self.assertTrue('dev-java/openjdk:8' in openjdk8_use_dep_strs)
