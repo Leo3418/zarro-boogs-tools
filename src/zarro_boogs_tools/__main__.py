@@ -19,19 +19,79 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
-import zarro_boogs_tools
+import zarro_boogs_tools.cli
+import zarro_boogs_tools.inference
+import zarro_boogs_tools.package
+import zarro_boogs_tools.portage
 
 import sys
+from pathlib import Path
+
+import nattka.package
+from pkgcore.ebuild.profiles import OnDiskProfile
 
 
-def main() -> int:
-    print(f"{zarro_boogs_tools.__project_name__} "
-          f"{zarro_boogs_tools.__version__}")
+def main(program_name: str, args: list[str]) -> int:
+    opts = zarro_boogs_tools.cli.parse_args(args)
+    repo_path = opts.repo
+    portage_config_path = opts.portage_config  # 'None' OK
+    match_keyword = opts.match_keyword
+    keyword_change_type = opts.keyword_change_type
+
+    domain, repo = nattka.package.find_repository(
+        repo_path, portage_config_path)
+    if portage_config_path is None:
+        portage_config_path = Path(domain.config_dir)
+    arch = domain.arch
+    system_profile = domain.profile
+
+    # Options commonly recognized by more than one subcommand but are not
+    # always mandatory or recognized
+    subcommand = opts.subcommand
+    atoms = list()
+    if hasattr(opts, 'atoms'):
+        for atom_str in opts.atoms:
+            atom_obj = \
+                zarro_boogs_tools.package.get_atom_obj_from_str(atom_str)
+            check_result = \
+                zarro_boogs_tools.package.check_atom_obj_for_keywording(
+                    atom_obj)
+            if check_result is not None:
+                print(f"{program_name}: {atom_str}: {check_result}",
+                      file=sys.stderr)
+                return 1
+            atoms.append(atom_obj)
+
+    if subcommand == 'ls-portage':
+        if opts.profile is None:
+            profile = system_profile
+        else:
+            profile = None
+            for repo_profile in repo.profiles.profiles:
+                if opts.profile == repo_profile.path:
+                    profile = OnDiskProfile(
+                        repo_profile.base, repo_profile.path)
+                    break
+            if profile is None:
+                print(f"{program_name}: Unknown profile: {opts.profile}",
+                      file=sys.stderr)
+                return 1
+        portage_config_op = opts.portage_config_op
+        return zarro_boogs_tools.portage.main(
+            program_name, portage_config_path, repo, atoms, profile,
+            keyword_change_type, match_keyword, portage_config_op)
+
+    if subcommand == 'ls-nattka':
+        print(f"{program_name}: {subcommand}: "
+              f"Subcommand not fully implemented yet")
+        return 0
+
     return 0
 
 
 def main_wrapper() -> None:
-    sys.exit(main())
+    program_name = Path(sys.argv[0]).name
+    sys.exit(main(program_name, sys.argv[1:]))
 
 
 if __name__ == '__main__':
