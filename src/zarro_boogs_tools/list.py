@@ -19,17 +19,29 @@
 #  along with zarro-boogs-tools.  If not, see
 #  <https://www.gnu.org/licenses/>.
 
+from zarro_boogs_tools import __project_name_abbrev__
 from zarro_boogs_tools.inference import is_stabilizing
 from zarro_boogs_tools.package import \
     get_keyword_matching_pkg_filter, get_packages_to_process
+from zarro_boogs_tools.portage import \
+    PAK, get_portage_config_file_prefix, get_accept_keywords_contents
 
+import enum
+import os
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Optional
 
 from nattka.bugzilla import BugCategory
 from pkgcore.ebuild.ebuild_src import package
 from pkgcore.ebuild.profiles import OnDiskProfile
 from pkgcore.ebuild.repository import UnconfiguredTree
+
+
+class PackageListFileFormat(enum.Enum):
+    """Enumeration of supported package list file formats."""
+    PORTAGE = enum.auto()
+    TATT = enum.auto()
 
 
 def get_package_list_file_name_from_package(main_package: package) -> str:
@@ -113,3 +125,101 @@ def get_package_lists(
         result[pkg] = get_packages_to_process(
             pkg, target_keyword, repo, pkg_filter, target_profile)
     return result
+
+
+def write_file_with_eperm_fallback(
+        contents: str, primary_path: Path, fallback_path: Path) -> None:
+    """
+    Attempt to write a string to a file at the specified primary path first; if
+    the operation fails because of insufficient permission, write it to a file
+    at the fallback path instead.
+
+    :param contents: the string to be written to a file
+    :param primary_path: the first path to attempt for the new file
+    :param fallback_path: the next path to attempt if permission to write to
+        the primary path is denied
+    """
+    try:
+        primary_path.parent.mkdir(exist_ok=True)
+        primary_path.write_text(contents)
+    except PermissionError:
+        fallback_path.parent.mkdir(exist_ok=True)
+        fallback_path.write_text(contents)
+
+
+def main(
+        portage_config: Path,
+        repo: UnconfiguredTree,
+        main_packages: list[package],
+        target_profile: OnDiskProfile,
+        keyword_change_type: Optional[BugCategory] = None,
+        match_keyword: Optional[str] = None,
+        clean: bool = False,
+        ls_file_formats: list[PackageListFileFormat] = None
+) -> int:
+    # If requested, clean any package list files created previously and exit
+    if clean:
+        file_paths_to_clean = list()
+        if len(main_packages) == 0:
+            # Every file selected by the glob pattern for removal should exist
+            missing_ok = False
+            # Package list files for Portage
+            file_paths_to_clean.extend((portage_config / PAK).glob(
+                f'{get_portage_config_file_prefix()}*'))
+            file_paths_to_clean.extend(Path(PAK).glob(
+                f'{get_portage_config_file_prefix()}*'))
+            # Package list files for tatt
+            file_paths_to_clean.extend(Path('.').glob(
+                f'{__project_name_abbrev__}--*'))
+        else:
+            missing_ok = True
+            for pkg in main_packages:
+                pkg_id = get_package_list_file_name_from_package(pkg)
+                # Package list files for Portage
+                file_paths_to_clean.append(
+                    (portage_config / PAK) /
+                    f'{get_portage_config_file_prefix()}{pkg_id}')
+                file_paths_to_clean.append(
+                    Path(PAK) / f'{get_portage_config_file_prefix()}{pkg_id}')
+                # Package list files for tatt
+                file_paths_to_clean.append(
+                    Path('.') / f'{__project_name_abbrev__}--{pkg_id}')
+        for file_path in file_paths_to_clean:
+            file_path.unlink(missing_ok)
+        return 0
+
+    if ls_file_formats is None:
+        ls_file_formats = list()
+
+    # Determine target keyword
+    target_keyword = get_target_keyword(
+        target_profile, main_packages, keyword_change_type)
+
+    # Get and output package lists
+    pkg_to_list_dict = get_package_lists(
+        repo, main_packages, target_profile, target_keyword, match_keyword)
+    for main_package in pkg_to_list_dict:
+        package_list = pkg_to_list_dict[main_package]
+        # Print package list to standard output in Portage
+        # package.accept_keywords format
+        portage_pak_contents = get_accept_keywords_contents(
+            package_list, target_keyword)
+        for line in portage_pak_contents:
+            print(line)
+
+        pkg_id = get_package_list_file_name_from_package(main_package)
+        for ls_file_format in ls_file_formats:
+            if ls_file_format == PackageListFileFormat.PORTAGE:
+                write_file_with_eperm_fallback(
+                    os.linesep.join(portage_pak_contents) + os.linesep,
+                    portage_config / PAK /
+                    f'{get_portage_config_file_prefix()}{pkg_id}',
+                    Path(PAK) / f'{get_portage_config_file_prefix()}{pkg_id}'
+                )
+            if ls_file_format == PackageListFileFormat.TATT:
+                file_path = Path('.') / f'{__project_name_abbrev__}--{pkg_id}'
+                file_contents = os.linesep.join(
+                    map(lambda p: f'={p.cpvstr}', reversed(package_list)))
+                file_path.write_text(file_contents + os.linesep)
+
+    return 0

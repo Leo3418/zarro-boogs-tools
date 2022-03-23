@@ -21,8 +21,8 @@
 
 import zarro_boogs_tools.cli
 import zarro_boogs_tools.inference
+import zarro_boogs_tools.list
 import zarro_boogs_tools.package
-import zarro_boogs_tools.portage
 
 import sys
 from pathlib import Path
@@ -48,7 +48,7 @@ def main(program_name: str, args: list[str]) -> int:
     # Options commonly recognized by more than one subcommand but are not
     # always mandatory or recognized
     subcommand = opts.subcommand
-    atoms = list()
+    main_packages = list()
     if hasattr(opts, 'atoms'):
         for atom_str in opts.atoms:
             atom_obj = \
@@ -60,9 +60,16 @@ def main(program_name: str, args: list[str]) -> int:
                 print(f"{program_name}: {atom_str}: {check_result}",
                       file=sys.stderr)
                 return 1
-            atoms.append(atom_obj)
+            main_package = zarro_boogs_tools.package.get_best_version(
+                atom_obj, repo)
+            if main_package is None:
+                print(f"{program_name}: {atom_obj}: "
+                      f"Could not find a matching package for atom",
+                      file=sys.stderr)
+                return 3
+            main_packages.append(main_package)
 
-    if subcommand == 'ls-portage':
+    if subcommand == 'ls':
         if opts.profile is None:
             profile = system_profile
         else:
@@ -76,10 +83,11 @@ def main(program_name: str, args: list[str]) -> int:
                 print(f"{program_name}: Unknown profile: {opts.profile}",
                       file=sys.stderr)
                 return 1
-        portage_config_op = opts.portage_config_op
-        return zarro_boogs_tools.portage.main(
-            program_name, portage_config_path, repo, atoms, profile,
-            keyword_change_type, match_keyword, portage_config_op)
+        clean = opts.clean
+        ls_file_formats = opts.ls_file_formats
+        return zarro_boogs_tools.list.main(
+            portage_config_path, repo, main_packages, profile,
+            keyword_change_type, match_keyword, clean, ls_file_formats)
 
     if subcommand == 'ls-nattka':
         print(f"{program_name}: {subcommand}: "

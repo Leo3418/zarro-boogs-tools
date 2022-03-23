@@ -20,17 +20,12 @@
 #  <https://www.gnu.org/licenses/>.
 
 from zarro_boogs_tools import __project_name__, __version__
+from zarro_boogs_tools.list import PackageListFileFormat
 
 import argparse
-import enum
 from pathlib import Path
 
 from nattka.bugzilla import BugCategory
-
-
-class PortageConfigOperation(enum.Enum):
-    CLEAN = enum.auto()
-    WRITE = enum.auto()
 
 
 def parse_args(args: list[str], exit_on_error: bool = True) \
@@ -105,25 +100,23 @@ def parse_args(args: list[str], exit_on_error: bool = True) \
         title="available subcommands"
     )
 
-    parser_ls_portage = subparsers.add_parser(
-        'ls-portage',
+    parser_ls = subparsers.add_parser(
+        'ls',
         help="""
-        find and list packages that need to be processed in Portage
-        /etc/portage/package.accept_keywords format
+        list packages that need to be tested for keywording or stabilization
         """,
         description="""
-        In a format that can be used in /etc/portage/package.accept_keywords,
-        list packages that need to be keyworded or stabilized in a keywording
+        List packages that need to be keyworded or stabilized in a keywording
         or stabilization request for the packages specified in the
         command-line.
         """
     )
-    parser_ls_portage.add_argument(
+    parser_ls.add_argument(
         'atoms',
         help="package atoms to be processed",
         nargs='*',
     )
-    parser_ls_portage.add_argument(
+    parser_ls.add_argument(
         '-p', '--profile',
         help="""
         the Portage profile to target; used to filter out USE-conditional
@@ -131,36 +124,50 @@ def parse_args(args: list[str], exit_on_error: bool = True) \
         current system)
         """
     )
-    group_ls_portage_action = parser_ls_portage.add_argument_group(
-        title="options to alter Portage configuration files"
-    ).add_mutually_exclusive_group()
-    group_ls_portage_action.add_argument(
-        '-w', '--write',
-        help="""
-        write the package list to package.accept_keywords/ under Portage
-        configuration files directory
-        """,
-        dest='portage_config_op',
-        action='store_const',
-        const=PortageConfigOperation.WRITE
+    group_ls_file_ops = parser_ls.add_argument_group(
+        title="options to alter package lists written to disk",
+        description="""
+        If '-c' is specified, then all other options in this section will be
+        ignored.
+        """
     )
-    group_ls_portage_action.add_argument(
+    group_ls_file_ops.add_argument(
+        '-e', '--portage',
+        help="""
+        write the package list to a file in package.accept_keywords/ under
+        Portage configuration files directory, or current working directory
+        if permission is denied
+        """,
+        dest='ls_file_formats',
+        action='append_const',
+        const=PackageListFileFormat.PORTAGE
+    )
+    group_ls_file_ops.add_argument(
+        '-t', '--tatt',
+        help="""
+        write the package list to a file under the current working directory
+        that can be passed to the '-f' option of tatt(1)
+        """,
+        dest='ls_file_formats',
+        action='append_const',
+        const=PackageListFileFormat.TATT
+    )
+    group_ls_file_ops.add_argument(
         '-c', '--clean',
         help="""
-        clean files created by the '-w' option before; either clean all files
-        ever created by '-w', or, if any packages are specified, only clean
-        files fil created for those packages
+        clean files created before by the other options in this section in
+        package.accept_keywords/ under Portage configuration files directory
+        and the current working directory; either clean all files ever created
+        by those options, or, if any packages are specified, only clean files
+        created for those packages
         """,
-        dest='portage_config_op',
-        action='store_const',
-        const=PortageConfigOperation.CLEAN
+        action='store_true'
     )
 
     parser_ls_nattka = subparsers.add_parser(
         'ls-nattka',
         help="""
-        find and list packages that need to be processed in NATTkA package list
-        format
+        get a NATTkA package list for a keywording or stabilization request
         """,
         description="""
         In a format that can be used in a NATTkA package list, list packages
