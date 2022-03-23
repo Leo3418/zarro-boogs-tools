@@ -41,6 +41,31 @@ class TestList(unittest.TestCase):
         cls.java = java
         cls.profile = profile
 
+    def test_get_package_list_file_name_from_package(self):
+        """
+        Test if the 'get_package_list_file_name_from_package' function returns
+        a file name matching the function's specification.
+        """
+        def check_spec(file_name: str):
+            # Cannot be a file under a subdirectory
+            self.assertFalse(os.path.sep in file_name)
+            # Cannot be a hidden file
+            self.assertFalse(file_name.startswith('.'))
+
+        packages = list()
+        packages.append(get_best_version(
+            get_atom_obj_from_str('dev-java/c3p0'), self.java))
+        packages.append(get_best_version(
+            get_atom_obj_from_str('virtual/jdk:11'), self.java))
+        packages.append(get_best_version(
+            get_atom_obj_from_str('=dev-java/antlr-4.9.3'), self.java))
+        packages.append(get_best_version(
+            get_atom_obj_from_str('>=sys-libs/glibc-2.35'), self.java))
+
+        for main_package in packages:
+            result = get_package_list_file_name_from_package(main_package)
+            check_spec(result)
+
     def test_generate_package_lists_empty_packages(self):
         """
         Test the 'generate_package_lists' function when no packages are

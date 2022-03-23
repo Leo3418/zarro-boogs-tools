@@ -32,6 +32,19 @@ from pkgcore.ebuild.profiles import OnDiskProfile
 from pkgcore.ebuild.repository import UnconfiguredTree
 
 
+def get_package_list_file_name_from_package(main_package: package) -> str:
+    """
+    Get a file name component that may be used to identify the package list
+    file for a main package, does not contain any leading directory components,
+    and does not render the file as a hidden file when it is used as a prefix
+    of a file's base name.
+
+    :param main_package: the main package that identifies a package list
+    :return: a suitable file name identifying the main package
+    """
+    return f'{main_package.category}/{main_package.PN}'.replace('/', '--')
+
+
 def get_target_keyword(
         target_profile: OnDiskProfile,
         main_packages: Iterable[package],
