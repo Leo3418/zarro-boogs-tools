@@ -20,7 +20,7 @@
 #  <https://www.gnu.org/licenses/>.
 
 __project_name__ = 'zarro-boogs-tools'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 """
 An abbreviation of this project's name that may be used in names of files
