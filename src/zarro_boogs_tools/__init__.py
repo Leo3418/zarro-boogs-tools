@@ -21,3 +21,11 @@
 
 __project_name__ = 'zarro-boogs-tools'
 __version__ = '0.0.1'
+
+"""
+An abbreviation of this project's name that may be used in names of files
+pertaining to this program to help users avoid having to frequently type in the
+entire project name.
+"""
+__project_name_abbrev__ = ''.join(map(
+    lambda part: part[0], __project_name__.split('-')))
