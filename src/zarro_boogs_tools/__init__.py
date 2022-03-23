@@ -20,4 +20,4 @@
 #  <https://www.gnu.org/licenses/>.
 
 __project_name__ = 'zarro-boogs-tools'
-__version__ = '0.0.0'
+__version__ = '0.0.1'
